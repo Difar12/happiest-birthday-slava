@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Special Gift For You</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #ffe4e6;
+            background-image: radial-gradient(#ffb6c1 1px, transparent 1px);
+            background-size: 20px 20px;
+            scroll-behavior: smooth;
+        }
+
+        .handwriting {
+            font-family: 'Caveat', cursive;
+        }
+        
+        .floating { animation: floating 3s ease-in-out infinite; }
+        .floating-slow { animation: floating 4.5s ease-in-out infinite; }
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .heart-beat { animation: heartbeat 1.5s infinite; }
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            14% { transform: scale(1.1); }
+            28% { transform: scale(1); }
+            42% { transform: scale(1.1); }
+            70% { transform: scale(1); }
+        }
+
+        /* Polaroid Photo Style */
+        .polaroid {
+            background: white;
+            padding: 10px 10px 20px 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1), 0 6px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+        .polaroid:hover {
+            transform: scale(1.05) rotate(0deg) !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        /* Floating Background Elements */
+        .bg-hearts {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: -1;
+            overflow: hidden;
+        }
+        .bg-heart {
+            position: absolute;
+            bottom: -20px;
+            color: #ffb3c6;
+            animation: floatUp linear infinite;
+            opacity: 0.6;
+        }
+
+        .bg-photo, .bg-flower, .bg-balloon {
+            position: absolute;
+            bottom: -100px;
+            object-fit: contain;
+            animation: floatUp linear infinite;
+        }
+        .bg-photo {
+            object-fit: cover;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            opacity: 0.8;
+        }
+        .bg-flower {
+            opacity: 0.7;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+        .bg-balloon {
+            opacity: 0.85;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));
+        }
+
+        @keyframes floatUp {
+            to { transform: translateY(-110vh) rotate(360deg); }
+        }
+        @keyframes floatUpNoRotate {
+            to { transform: translateY(-110vh); }
+        }
+
+        /* Bubble Interaktif & Mini Bears */
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.1) 60%, rgba(255, 255, 255, 0.4));
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2), inset 0 0 15px rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            animation: floatUpNoRotate linear infinite;
+            z-index: 20;
+            transition: transform 0.1s;
+        }
+        .bubble:hover {
+            transform: scale(1.1);
+        }
+        .mini-bear {
+            position: fixed;
+            font-size: 28px;
+            pointer-events: none;
+            z-index: 100;
+            animation: scatter 1s ease-out forwards;
+        }
+        @keyframes scatter {
+            0% { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(1.2) rotate(var(--rot)); opacity: 0; }
+        }
+
+        /* Note Cards Transition */
+        .note-content {
+            transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .note-content.show {
+            max-height: 200px;
+            opacity: 1;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center overflow-hidden relative">
+
+    <!-- Animasi Latar Belakang (Hati, Foto, Bunga & Balon melayang) -->
+    <div class="bg-hearts" id="hearts-container"></div>
+
+    <!-- AUDIO ELEMENT -->
+    <audio id="bg-music" src="assets/Gluesong.mp3" loop autoplay></audio>
+
+    <!-- TOMBOL PLAY MUSIK MENGAMBANG (DENGAN DUDU) -->
+    <div id="music-container" class="hidden fixed bottom-6 right-6 z-50 flex items-end space-x-2">
+        <img src="assets/playingmusicdudu.gif" alt="DJ Dudu" class="w-20 h-20 drop-shadow-md floating">
+        <button id="music-btn" class="bg-pink-500 text-white p-4 rounded-full shadow-xl hover:bg-pink-600 hover:scale-110 transition-transform font-bold border-2 border-white">
+            🎵 Play Music
+        </button>
+    </div>
+
+    <!-- HALAMAN DEPAN (GIFT BOX) -->
+    <div id="intro-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-md transition-all duration-700">
+        <div class="bg-white rounded-3xl shadow-2xl p-10 text-center border-4 border-pink-200 max-w-md w-[90%] mx-auto relative mt-10">
+            
+            <!-- Hiasan Balon & Bunga kotak depan -->
+            <img src="assets/balloon1.png" class="absolute -top-24 -left-8 w-24 drop-shadow-lg floating" style="animation-delay: 0.2s;">
+            <img src="assets/balloon2.png" class="absolute -top-20 -right-6 w-24 drop-shadow-lg floating" style="animation-delay: 1.2s;">
+            <img src="assets/sakura.png" class="absolute -top-6 -right-6 w-16 h-16 drop-shadow-md rotate-12 z-20">
+            <img src="assets/pinkrose.png" class="absolute -bottom-6 -left-6 w-16 h-16 drop-shadow-md -rotate-12 z-20">
+
+            <div class="text-7xl mb-6 floating-slow cursor-pointer" id="gift-icon">🎁</div>
+            <h1 class="text-4xl font-semibold text-pink-600 mb-2 handwriting">Hello, Slava! &lt;3</h1>
+            <p class="text-gray-500 mb-8 font-medium">I made a little something for you.</p>
+            
+            <button id="open-btn" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform transform hover:scale-105 active:scale-95 text-lg">
+                Press Gift 🎁
+            </button>
+        </div>
+    </div>
+
+    <!-- HALAMAN QUIZ (POP QUIZ) -->
+    <div id="quiz-screen" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/90 backdrop-blur-md transition-all duration-700 opacity-0">
+        <div id="quiz-card" class="bg-white rounded-3xl shadow-2xl p-8 text-center border-4 border-pink-200 max-w-md w-[90%] mx-auto relative">
+            
+            <h2 id="quiz-header" class="text-3xl font-bold text-pink-600 mb-2 handwriting tracking-wide">Before you open...</h2>
+            <p id="quiz-subtitle" class="text-gray-500 mb-6 font-medium">Let's see if you can pass this pop quiz! 📝</p>
+            
+            <img src="assets/dudu-playing-with-ball-happy.gif" id="quiz-gif" class="w-40 h-40 mx-auto drop-shadow-md mb-6 object-contain">
+            
+            <h3 id="quiz-title" class="text-2xl font-semibold text-gray-800 mb-6"></h3>
+            
+            <div id="quiz-options" class="w-full space-y-3">
+                <!-- Buttons akan dimasukkan lewat JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- HALAMAN UTAMA (ISI KEJUTAN) -->
+    <div id="main-content" class="hidden w-full max-w-2xl mx-auto px-4 py-16 opacity-0 transition-opacity duration-1000">
+        
+        <!-- BAGIAN 1: BERUANG, KUE & UCAPAN UTAMA -->
+        <div class="bg-white rounded-3xl shadow-xl p-8 mb-16 text-center border-2 border-pink-100 relative mt-8">
+            
+            <!-- Hiasan Balon & Bunga di kartu utama -->
+            <img src="assets/balloon1.png" class="absolute -top-16 -left-10 w-28 drop-shadow-lg floating z-20" style="animation-delay: 0s;">
+            <img src="assets/balloon2.png" class="absolute -top-12 -right-8 w-28 drop-shadow-lg floating z-20" style="animation-delay: 1s;">
+            
+            <img src="assets/sakura.png" class="absolute -top-8 -left-6 w-24 h-24 drop-shadow-md rotate-[-15deg] z-10 pointer-events-none hover:scale-110 transition-transform">
+            <img src="assets/pinkrose.png" class="absolute top-8 -right-8 w-20 h-20 drop-shadow-md rotate-[20deg] z-10 pointer-events-none hover:scale-110 transition-transform">
+            <img src="assets/bouquetyellowflower.png" class="absolute -bottom-10 -right-4 w-28 h-28 drop-shadow-md rotate-[10deg] z-20 pointer-events-none hover:scale-110 transition-transform">
+            <img src="assets/sakura.png" class="absolute -bottom-4 -left-8 w-16 h-16 drop-shadow-md rotate-[45deg] z-20 pointer-events-none">
+
+            <!-- BERUANG ASSET -->
+            <div class="flex justify-center items-end -mt-24 mb-4 relative z-10 floating-slow">
+                <img src="assets/brownbear.png" alt="Brown Bear" class="w-28 sm:w-36 h-auto drop-shadow-xl relative left-4 z-10 hover:scale-105 transition-transform">
+                <img src="assets/whitebear.png" alt="White Bear" class="w-28 sm:w-36 h-auto drop-shadow-xl relative right-4 z-0 hover:scale-105 transition-transform">
+                <div class="absolute bottom-8 sm:bottom-12 text-4xl sm:text-5xl heart-beat z-20" style="text-shadow: 0 4px 8px rgba(0,0,0,0.2);">❤️</div>
+            </div>
+
+            <!-- KUE ULANG TAHUN ASSET -->
+            <div class="flex justify-center mb-6 relative z-10">
+                <img src="assets/birthdaycake.png" alt="Birthday Cake" class="w-28 sm:w-32 h-auto drop-shadow-lg floating" style="animation-delay: 0.5s;">
+            </div>
+
+            <h2 class="text-5xl font-bold text-pink-500 mb-2 handwriting drop-shadow-sm tracking-wide">Happy Birthday, Slava!</h2>
+            
+            <div class="bg-pink-50/80 rounded-2xl p-6 mt-6 shadow-inner relative text-gray-700 border border-pink-100">
+                <span class="absolute top-2 left-2 text-4xl text-pink-300 font-serif opacity-70">"</span>
+                <!-- ================= PESAN UTAMA ================= -->
+                <p class="relative z-10 font-medium text-lg leading-relaxed px-4 py-2">
+                    Happy birthday to the most amazing person I know! 
+                    Thank you for always making me laugh and brightening my day just by being you. 
+                    I hope today brings you as much joy as you bring to everyone around you.
+                    You’re truly something special, and I can’t help but feel lucky knowing you, Slava. ❤️
+                </p>
+                <span class="absolute bottom-[-10px] right-4 text-4xl text-pink-300 font-serif opacity-70">"</span>
+            </div>
+        </div>
+
+        <!-- BAGIAN 2: GALERI FOTO POLAROID -->
+        <div class="mb-16 relative">
+            <!-- Hiasan Buket Bunga, Balon & Dudu GIF di area judul galeri -->
+            <img src="assets/bouquetyellowflower.png" class="absolute -top-12 left-10 w-20 h-20 drop-shadow-md rotate-[-20deg] z-10 opacity-90 pointer-events-none">
+            <img src="assets/balloon1.png" class="absolute -top-20 right-10 w-20 drop-shadow-md floating z-10 opacity-80 pointer-events-none" style="animation-delay: 2s;">
+            
+            <!-- NEW: Dudu main bola GIF menghias area galeri polaroid -->
+            <img src="assets/dudu-playing-with-ball-happy.gif" class="absolute -top-16 right-4 sm:right-20 w-24 h-24 drop-shadow-md z-20 pointer-events-none floating">
+
+            <h3 class="text-3xl font-bold text-center text-pink-600 mb-10 bg-white/90 py-3 rounded-full backdrop-blur-md inline-block px-10 relative left-1/2 -translate-x-1/2 shadow-sm border-2 border-pink-100 handwriting tracking-wider">
+                📸 Someone Like You?
+            </h3>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 px-4">
+                
+                <!-- Foto 1 -->
+                <div class="polaroid rotate-[-3deg]">
+                    <img src="assets/sakura.png" class="absolute -top-4 -left-4 w-12 h-12 z-20 drop-shadow-sm pointer-events-none">
+                    <div class="bg-gray-200 w-full aspect-square mb-3 flex items-center justify-center overflow-hidden rounded-sm">
+                        <img src="assets/him1.jpeg" class="object-cover w-full h-full hover:scale-110 transition-transform duration-700" alt="Slava">
+                    </div>
+                    <p class="handwriting text-3xl text-center text-gray-700 mt-3">Beautiful Boy ✨</p>
+                </div>
+
+                <!-- Foto 2 -->
+                <div class="polaroid rotate-[4deg] sm:mt-8">
+                    <img src="assets/pinkrose.png" class="absolute -bottom-4 -right-4 w-14 h-14 z-20 drop-shadow-sm pointer-events-none">
+                    <div class="bg-gray-200 w-full aspect-square mb-3 flex items-center justify-center overflow-hidden rounded-sm">
+                        <img src="assets/silly1.jpeg" class="object-cover w-full h-full hover:scale-110 transition-transform duration-700" alt="Slava Silly">
+                    </div>
+                    <p class="handwriting text-3xl text-center text-gray-700 mt-3">Silly you :P</p>
+                </div>
+
+                <!-- Foto 3 (Halloween dengan Dudu GIF!) -->
+                <div class="polaroid rotate-[-2deg]">
+                    <img src="assets/balloon2.png" class="absolute -top-10 -right-6 w-16 z-20 drop-shadow-sm pointer-events-none floating-slow">
+                    
+                    <!-- NEW: Halloween Dudu GIF di pinggir foto Halloween -->
+                    <img src="assets/halloweendudu.gif" class="absolute -bottom-8 -right-10 w-24 h-24 z-30 drop-shadow-lg pointer-events-none hover:scale-110 transition-transform">
+                    
+                    <div class="bg-gray-200 w-full aspect-square mb-3 flex items-center justify-center overflow-hidden rounded-sm">
+                        <img src="assets/hallowen1.jpeg" class="object-cover w-full h-full hover:scale-110 transition-transform duration-700" alt="Slava Halloween">
+                    </div>
+                    <p class="handwriting text-3xl text-center text-gray-700 mt-3">Happy Halloween! 🎃</p>
+                </div>
+
+                <!-- Foto 4 -->
+                <div class="polaroid rotate-[3deg] sm:mt-8">
+                    <img src="assets/sakura.png" class="absolute -top-3 -right-3 w-10 h-10 z-20 drop-shadow-sm pointer-events-none rotate-90">
+                    <div class="bg-gray-200 w-full aspect-square mb-3 flex items-center justify-center overflow-hidden rounded-sm">
+                        <img src="assets/funny1.jpeg" class="object-cover w-full h-full hover:scale-110 transition-transform duration-700" alt="Slava Funny">
+                    </div>
+                    <p class="handwriting text-3xl text-center text-gray-700 mt-3">Who is this??</p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- BAGIAN 3: ALASAN KENAPA DIA SPESIAL -->
+        <div class="bg-white/90 backdrop-blur-md rounded-3xl shadow-xl p-8 mb-12 border-2 border-pink-100 relative mt-16">
+            <img src="assets/pinkrose.png" class="absolute -top-6 -right-2 w-16 h-16 drop-shadow-sm rotate-45 z-20 pointer-events-none hover:scale-110 transition-transform">
+            
+            <!-- NEW: Dudu Ngasih Bunga GIF -->
+            <img src="assets/giveflower.gif" class="absolute -top-16 -left-8 w-28 h-28 drop-shadow-md z-20 pointer-events-none hover:scale-110 transition-transform">
+
+            <h3 class="text-3xl font-bold text-center text-pink-500 mb-8 handwriting tracking-wide">💌 3 Reasons Why You're Special</h3>
+            
+            <div class="space-y-4 relative z-10">
+                <!-- Kartu 1 -->
+                <div class="bg-pink-50 rounded-xl p-5 cursor-pointer hover:bg-pink-100 transition-colors border border-pink-200 shadow-sm" onclick="toggleNote('note1')">
+                    <div class="flex justify-between items-center font-semibold text-gray-800 text-lg">
+                        <span>1. Tap to reveal...</span>
+                        <span class="text-2xl">✨</span>
+                    </div>
+                    <div id="note1" class="note-content text-pink-600 font-medium text-lg">
+                        <div class="pt-3 border-t border-pink-200 mt-2">
+                            Your sweet, loyal, and cute ways always make me smile, even from afar.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kartu 2 -->
+                <div class="bg-pink-50 rounded-xl p-5 cursor-pointer hover:bg-pink-100 transition-colors border border-pink-200 shadow-sm" onclick="toggleNote('note2')">
+                    <div class="flex justify-between items-center font-semibold text-gray-800 text-lg">
+                        <span>2. Tap to reveal...</span>
+                        <span class="text-2xl">🌟</span>
+                    </div>
+                    <div id="note2" class="note-content text-pink-600 font-medium text-lg">
+                        <div class="pt-3 border-t border-pink-200 mt-2">
+                            You’re always there for me and somehow handle my sensitive side with so much care.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kartu 3 -->
+                <div class="bg-pink-50 rounded-xl p-5 cursor-pointer hover:bg-pink-100 transition-colors border border-pink-200 shadow-sm" onclick="toggleNote('note3')">
+                    <div class="flex justify-between items-center font-semibold text-gray-800 text-lg">
+                        <span>3. Tap to reveal...</span>
+                        <span class="text-2xl">❤️</span>
+                    </div>
+                    <div id="note3" class="note-content text-pink-600 font-medium text-lg">
+                        <div class="pt-3 border-t border-pink-200 mt-2">
+                            Even when work gets tough and you’re tired, you still make time for me, showing how amazing and strong you are. 💖
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PENUTUP -->
+        <div class="text-center pb-20 relative mt-20">
+            <p class="text-2xl font-medium text-gray-700 mb-2 handwriting">Once again,</p>
+            <p class="text-5xl font-bold text-pink-500 floating handwriting drop-shadow-sm">Happy Birthday! 🎉</p>
+            
+            <div class="flex justify-center items-end mt-8 space-x-4">
+                <img src="assets/balloon1.png" class="w-20 drop-shadow-md floating" style="animation-delay: 0.5s;">
+                
+                <!-- NEW: Bubu Hold Dudu GIF di bagian tengah bawah merayakan bareng -->
+                <img src="assets/bubuholddudu.gif" class="w-32 h-32 drop-shadow-md floating-slow relative z-10" style="animation-delay: 1s;">
+                
+                <img src="assets/balloon2.png" class="w-20 drop-shadow-md floating" style="animation-delay: 1.5s;">
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SCRIPTS -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const openBtn = document.getElementById('open-btn');
+            const giftIcon = document.getElementById('gift-icon');
+            const introScreen = document.getElementById('intro-screen');
+            const quizScreen = document.getElementById('quiz-screen');
+            const mainContent = document.getElementById('main-content');
+            
+            const bgMusic = document.getElementById('bg-music');
+            const musicBtn = document.getElementById('music-btn');
+            const musicContainer = document.getElementById('music-container');
+            let isMusicPlaying = false;
+
+            // --- DATA POP QUIZ ---
+            const quizData = [
+                {
+                    q: "What is 'Good Morning' (Dobroe Utro) in Indonesian?",
+                    opts: ["A. Selamat Pagi", "B. Terima Kasih"],
+                    ans: 0
+                },
+                {
+                    q: "What is 'Thank You' (Spasibo) in Indonesian?",
+                    opts: ["A. Selamat Malam", "B. Terima Kasih"],
+                    ans: 1
+                },
+                {
+                    q: "What is 'Good Night' (Spokoynoy Nochi) in Indonesian?",
+                    opts: ["A. Selamat Malam", "B. Selamat Pagi"],
+                    ans: 0
+                }
+            ];
+            let currentQ = 0;
+
+            // Fungsi untuk mencoba memutar musik (Autoplay)
+            const playAudio = () => {
+                if (bgMusic && !isMusicPlaying) {
+                    bgMusic.volume = 0.5;
+                    bgMusic.play().then(() => {
+                        isMusicPlaying = true;
+                        musicBtn.innerHTML = '⏸ Pause Music';
+                    }).catch(err => console.log("Menunggu interaksi pertama user untuk memutar musik..."));
+                }
+            };
+
+            playAudio();
+            document.addEventListener('click', playAudio, { once: true });
+
+            // --- LOGIKA HALAMAN KUIS ---
+            window.renderQuestion = function() {
+                const quizHeader = document.getElementById('quiz-header');
+                const quizSubtitle = document.getElementById('quiz-subtitle');
+                const quizGif = document.getElementById('quiz-gif');
+                const quizTitle = document.getElementById('quiz-title');
+                const quizOptions = document.getElementById('quiz-options');
+
+                // Jika kuis selesai
+                if (currentQ >= quizData.length) {
+                    quizHeader.innerHTML = "Congratulations u passed the test! &lt;3";
+                    quizSubtitle.style.display = "none";
+                    quizTitle.style.display = "none";
+                    quizGif.src = "assets/bubuholddudu.gif"; // GIF Pas Lulus
+                    
+                    quizOptions.innerHTML = `<button id="final-open-btn" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-4 px-8 rounded-full shadow-lg transition-transform transform hover:scale-105 active:scale-95 text-xl w-full mt-4 handwriting tracking-wide">🎁 Open ur gift!</button>`;
+                    document.getElementById('final-open-btn').addEventListener('click', openPresent);
+                    return;
+                }
+
+                // Jika masih ada kuis
+                quizHeader.innerText = "Before you open...";
+                quizSubtitle.style.display = "block";
+                quizTitle.style.display = "block";
+                quizTitle.innerText = quizData[currentQ].q;
+                quizGif.src = "assets/dudu-playing-with-ball-happy.gif"; // GIF Default Pertanyaan
+                quizOptions.innerHTML = '';
+
+                quizData[currentQ].opts.forEach((opt, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = "bg-white border-2 border-pink-300 hover:bg-pink-100 text-pink-600 font-bold py-3 px-6 rounded-xl shadow-sm transition-transform transform hover:scale-105 active:scale-95 w-full mb-3 text-lg";
+                    btn.innerText = opt;
+                    btn.onclick = () => checkAnswer(index);
+                    quizOptions.appendChild(btn);
+                });
+            }
+
+            window.checkAnswer = function(index) {
+                const quizHeader = document.getElementById('quiz-header');
+                const quizSubtitle = document.getElementById('quiz-subtitle');
+                const quizGif = document.getElementById('quiz-gif');
+                const quizTitle = document.getElementById('quiz-title');
+                const quizOptions = document.getElementById('quiz-options');
+
+                quizSubtitle.style.display = "none";
+                quizTitle.style.display = "none";
+
+                if (index === quizData[currentQ].ans) {
+                    quizHeader.innerText = "Correct! 💖";
+                    quizGif.src = "assets/giveflower.gif"; // GIF Benar
+                    
+                    // Tombol Continue kalau benar
+                    quizOptions.innerHTML = `<button class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform transform hover:scale-105 active:scale-95 text-lg w-full mt-4" onclick="nextQuestion()">Click Continue ➡️</button>`;
+                } else {
+                    quizHeader.innerText = "Wrong answer! 😤";
+                    quizGif.src = "assets/pinching-cheeks-bubu-angry.gif"; // GIF Salah
+                    quizOptions.innerHTML = `<button class="bg-red-400 hover:bg-red-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform transform hover:scale-105 active:scale-95 text-lg w-full mt-4" onclick="renderQuestion()">Try Again 🥺</button>`;
+                }
+            }
+
+            // Fungsi untuk lanjut ke pertanyaan berikutnya
+            window.nextQuestion = function() {
+                currentQ++;
+                renderQuestion();
+            }
+
+            // --- FUNGSI MULA KUIS (DARI LAYAR DEPAN) ---
+            const startQuiz = () => {
+                playAudio();
+                introScreen.style.opacity = '0';
+                introScreen.style.transform = 'scale(0.95)';
+                
+                setTimeout(() => {
+                    introScreen.style.display = 'none';
+                    quizScreen.classList.remove('hidden');
+                    
+                    setTimeout(() => {
+                        quizScreen.classList.remove('opacity-0');
+                        renderQuestion();
+                    }, 100);
+                }, 700);
+            };
+
+            openBtn.addEventListener('click', startQuiz);
+            giftIcon.addEventListener('click', startQuiz);
+
+            // --- FUNGSI BUKA KADO UTAMA (SETELAH LULUS KUIS) ---
+            const openPresent = () => {
+                quizScreen.style.opacity = '0';
+                quizScreen.style.transform = 'scale(0.95)';
+                
+                setTimeout(() => {
+                    quizScreen.style.display = 'none';
+                    mainContent.classList.remove('hidden');
+                    musicContainer.classList.remove('hidden'); // Munculin Dudu DJ
+                    document.body.classList.remove('overflow-hidden');
+                    
+                    setTimeout(() => {
+                        mainContent.classList.remove('opacity-0');
+                        fireConfetti();
+                        createFloatingElements(); 
+                    }, 100);
+                }, 700);
+            };
+
+            // Logika Tombol Musik
+            musicBtn.addEventListener('click', () => {
+                if(!bgMusic) return;
+                if (isMusicPlaying) {
+                    bgMusic.pause();
+                    musicBtn.innerHTML = '🎵 Play Music';
+                } else {
+                    bgMusic.play();
+                    musicBtn.innerHTML = '⏸ Pause Music';
+                }
+                isMusicPlaying = !isMusicPlaying;
+            });
+
+            // --- EFEK VISUAL BACKGROUND ---
+            function createFloatingElements() {
+                const container = document.getElementById('hearts-container');
+                
+                // 1. Buat Hati
+                for(let i=0; i<15; i++) {
+                    let heart = document.createElement('div');
+                    heart.innerHTML = '❤';
+                    heart.className = 'bg-heart text-xl sm:text-2xl';
+                    heart.style.left = Math.random() * 100 + 'vw';
+                    heart.style.animationDuration = (Math.random() * 3 + 5) + 's';
+                    heart.style.animationDelay = Math.random() * 5 + 's';
+                    container.appendChild(heart);
+                }
+
+                // 2. Buat Foto Kecil
+                const photoSources = ['assets/funny1.jpeg', 'assets/hallowen1.jpeg', 'assets/him1.jpeg', 'assets/silly1.jpeg']; 
+                for(let i=0; i<6; i++) {
+                    let photo = document.createElement('img');
+                    photo.src = photoSources[Math.floor(Math.random() * photoSources.length)];
+                    photo.className = 'bg-photo';
+                    photo.onerror = function() { this.style.display = 'none'; };
+                    photo.style.left = Math.random() * 100 + 'vw';
+                    photo.style.animationDuration = (Math.random() * 5 + 8) + 's';
+                    photo.style.animationDelay = Math.random() * 5 + 's';
+                    let size = Math.random() * 30 + 35; 
+                    photo.style.width = size + 'px';
+                    photo.style.height = size + 'px';
+                    container.appendChild(photo);
+                }
+
+                // 3. Buat Bunga
+                const flowerSources = ['assets/sakura.png', 'assets/pinkrose.png', 'assets/bouquetyellowflower.png'];
+                for(let i=0; i<10; i++) { 
+                    let flower = document.createElement('img');
+                    flower.src = flowerSources[Math.floor(Math.random() * flowerSources.length)];
+                    flower.className = 'bg-flower';
+                    flower.style.left = Math.random() * 100 + 'vw';
+                    flower.style.animationDuration = (Math.random() * 6 + 7) + 's';
+                    flower.style.animationDelay = Math.random() * 5 + 's';
+                    let size = Math.random() * 30 + 25; 
+                    flower.style.width = size + 'px';
+                    flower.style.height = size + 'px';
+                    flower.style.transform = `rotate(${Math.random() * 360}deg)`;
+                    container.appendChild(flower);
+                }
+
+                // 4. Buat Balon
+                const balloonSources = ['assets/balloon1.png', 'assets/balloon2.png'];
+                for(let i=0; i<6; i++) {
+                    let balloon = document.createElement('img');
+                    balloon.src = balloonSources[Math.floor(Math.random() * balloonSources.length)];
+                    balloon.className = 'bg-balloon';
+                    balloon.style.left = Math.random() * 100 + 'vw';
+                    balloon.style.animation = `floatUpNoRotate ${Math.random() * 8 + 10}s linear infinite`;
+                    balloon.style.animationDelay = Math.random() * 5 + 's';
+                    let size = Math.random() * 40 + 50;
+                    balloon.style.width = size + 'px';
+                    container.appendChild(balloon);
+                }
+
+                // 5. Buat Bubbles
+                for(let i=0; i<5; i++) { createBubble(container); }
+                setInterval(() => createBubble(container), 3000);
+            }
+
+            function createBubble(container) {
+                let bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                let size = Math.random() * 30 + 45; 
+                bubble.style.width = size + 'px';
+                bubble.style.height = size + 'px';
+                bubble.style.left = Math.random() * 90 + 'vw';
+                bubble.style.bottom = '-100px';
+                bubble.style.animationDuration = (Math.random() * 6 + 9) + 's';
+                
+                bubble.addEventListener('click', function(e) {
+                    for(let j=0; j<6; j++) { createMiniBear(e.clientX, e.clientY); }
+                    this.remove();
+                });
+                
+                container.appendChild(bubble);
+                setTimeout(() => { if(bubble.parentNode) bubble.remove(); }, 16000);
+            }
+
+            function createMiniBear(x, y) {
+                const bear = document.createElement('div');
+                const emojis = ['🐻', '🧸', '🤍', '🌸', '🎈', '🎂']; 
+                bear.innerHTML = emojis[Math.floor(Math.random() * emojis.length)];
+                bear.className = 'mini-bear';
+                bear.style.left = (x - 15) + 'px';
+                bear.style.top = (y - 15) + 'px';
+                
+                const tx = (Math.random() - 0.5) * 160; 
+                const ty = (Math.random() - 1) * 160;   
+                const rot = (Math.random() - 0.5) * 120; 
+                
+                bear.style.setProperty('--tx', `${tx}px`);
+                bear.style.setProperty('--ty', `${ty}px`);
+                bear.style.setProperty('--rot', `${rot}deg`);
+                
+                document.body.appendChild(bear);
+                setTimeout(() => bear.remove(), 1000);
+            }
+
+            // --- CONFETTI ---
+            function fireConfetti() {
+                const duration = 6 * 1000;
+                const animationEnd = Date.now() + duration;
+                const defaults = { startVelocity: 35, spread: 360, ticks: 80, zIndex: 100, colors: ['#ffb3c6', '#ff4d6d', '#ffffff', '#faedcd', '#fef08a', '#a2d2ff'] };
+
+                function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+                const interval = setInterval(function() {
+                    const timeLeft = animationEnd - Date.now();
+                    if (timeLeft <= 0) return clearInterval(interval);
+                    const particleCount = 60 * (timeLeft / duration);
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+                }, 250);
+            }
+        });
+
+        // --- FUNGSI KLIK CATATAN ALASAN SPESIAL ---
+        function toggleNote(id) {
+            const note = document.getElementById(id);
+            if (note.classList.contains('show')) {
+                note.classList.remove('show');
+            } else {
+                document.querySelectorAll('.note-content').forEach(el => el.classList.remove('show'));
+                note.classList.add('show');
+            }
+        }
+    </script>
+</body>
+</html>
